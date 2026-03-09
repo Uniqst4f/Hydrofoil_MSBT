@@ -1,14 +1,16 @@
 #include <bits/stdc++.h>
 
+using namespace std;
+
 int main () {
 
   string nama;
-  int nrp;
+  string nrp;
 
 cout << "Masukan Nama :"<< "\n";
 getline(cin, nama);
 cout << "Masukan NRP :" << "\n";
-cin >> nrp;
+getline(cin, nrp);
 
 cout << nama << "\n";
 cout << nrp << "\n";
