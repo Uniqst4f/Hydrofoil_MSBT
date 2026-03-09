@@ -61,7 +61,7 @@ void setup() {
   outputMIN = 0;
   outputMAX = 100;
 
-  kp = 0;
+  kp = 1;
   ki = 0;
   kd = 0;
 
