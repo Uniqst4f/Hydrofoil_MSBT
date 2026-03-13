@@ -1,17 +1,17 @@
 
-const int water_height_lower_bound_cm = 20;
-//const int pump_pin = 9;
-const int trig_pin = 25;
-const int echo_pin = 33;
-const int sampletime = 1000;
-const int LED_PIN = 21;
+const uint8_t water_height_lower_bound_cm = 20;
+//const uint8 pump_pin = 9;
+const uint8_t trig_pin = 25;
+const uint8_t echo_pin = 33;
+const uint8_t sampletime = 1000;
+const uint8_t LED_PIN = 21;
 
 
 unsigned long last_time;
-double kp, ki, kd;
-double integral, previous_data_real, output;
-double outputMIN, outputMAX;
-double data_real;
+float kp, ki, kd;
+float integral, previous_data_real, output;
+float outputMIN, outputMAX;
+float data_real;
 
 
 void distance_calculator_cm() {
@@ -30,13 +30,13 @@ Serial.print("Distance :"); Serial.println(data_real);
 
 void PID () {
 unsigned long time_now = millis();
-double dt = time_now - last_time;
+float dt = time_now - last_time;
 
 if(dt >= sampletime)
 { 
-  double error = water_height_lower_bound_cm - data_real;
+  float error = water_height_lower_bound_cm - data_real;
   
-  integral += (ki * error);
+  integral+= (ki * error);
   if(integral > outputMAX) integral = outputMAX;
   if(integral < outputMIN) integral = outputMIN;
 
@@ -75,7 +75,7 @@ void loop() {
   PID();
   
   Serial.print("PID :"); Serial.println(output);
-  int pump_input = map(output, 0, 100, 0, 127);
+  uint8_t pump_input = map(output, 0, 100, 0, 127);
   Serial.print("PWM :"); Serial.println(pump_input);
   analogWrite(LED_PIN, pump_input);
   
