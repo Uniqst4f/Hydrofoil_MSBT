@@ -46,7 +46,7 @@ TIM_HandleTypeDef htim2;
 /* USER CODE BEGIN PV */
 
 void PID();
-void volume_calculator(uint16_t trig, uint16_t echo);
+void volume_calculator();
 void delay_us (uint16_t limit);
 
 /* USER CODE END PV */
@@ -62,21 +62,22 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-float kp = 1.02763984168736;
-float ki = 0.196569350266865;
-float kd = -0.216561164184195;
-
+float kp = 3.21901218630846;
+float ki = 2.981409209299337;
+float kd = -0.365610277195292;
 float integral, output;
 
 const uint16_t time_sample = 1000;
 
 uint32_t last_time;
-const uint16_t setpoint = 350;
+const uint16_t setpoint = 35;
 
 const uint16_t outputMIN = 0;
 const uint16_t outputMAX = 999;
+uint8_t debug;
+float distance;
 
-float current_reading, previous_reading;
+volatile float current_reading, previous_reading;
 
 /* USER CODE END 0 */
 
@@ -114,17 +115,20 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim2);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+
+  volume_calculator(trig_pin_Pin, echo_pin_Pin);
+  previous_reading = current_reading;
+  last_time = HAL_GetTick();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  volume_calculator();
+	  PID();
+	  HAL_Delay(60);
     /* USER CODE END WHILE */
-	volume_calculator(trig_pin_Pin, echo_pin_Pin);
-	PID();
-	HAL_Delay(60);
-
 
     /* USER CODE BEGIN 3 */
   }
@@ -311,6 +315,7 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(trig_pin_GPIO_Port, trig_pin_Pin, GPIO_PIN_RESET);
@@ -342,42 +347,52 @@ void delay_us(uint16_t limit) {
 
 }
 
-void volume_calculator(uint16_t trig, uint16_t echo)
-{
+void volume_calculator()
+{	debug = 0;
 	uint32_t time = 0;
 
-	HAL_GPIO_WritePin(GPIOA, trig, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(trig_pin_GPIO_Port, trig_pin_Pin, GPIO_PIN_SET);
 	delay_us(10);
-	HAL_GPIO_WritePin(GPIOA, trig, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(trig_pin_GPIO_Port, trig_pin_Pin, GPIO_PIN_RESET);
 
-	uint32_t timeout = 0;
-	while(HAL_GPIO_ReadPin(GPIOA, echo) == GPIO_PIN_RESET) {
 
-		timeout++;
+	__HAL_TIM_SET_COUNTER(&htim2, 0);
+	while(HAL_GPIO_ReadPin(echo_pin_GPIO_Port, echo_pin_Pin) == GPIO_PIN_RESET) {
 
-		if(timeout > 60000) {
+		time = __HAL_TIM_GET_COUNTER(&htim2);
+		if(time > 60000) {
 		            current_reading = 0;
+		            debug = 1;
 		            return;
 			}
 	}
 
-	__HAL_TIM_SET_COUNTER(&htim2, 0);
 
-	while(HAL_GPIO_ReadPin(GPIOA, echo) == GPIO_PIN_SET)
+	__HAL_TIM_SET_COUNTER(&htim2, 0);
+	__disable_irq();
+	while(HAL_GPIO_ReadPin(echo_pin_GPIO_Port, echo_pin_Pin) == GPIO_PIN_SET)
 	{
 
 		time = __HAL_TIM_GET_COUNTER(&htim2);
-		if(time > 40000) break;
+		if(time > 60000) {
+			current_reading = 0;
+			debug = 2;
+			__enable_irq();
+			return;
+
+		}
 
 	}
+	__enable_irq();
+	float rawDistance = (time * 0.0343) / 2;
+	if(rawDistance > 11) rawDistance = 11;
 
-	float distance = (time * 0.0343) / 2;
-	if(distance > 15) distance = 15;
+	distance = (0.2 * rawDistance) + (0.8 * distance);
 
 	float height;
-	height = 15 - distance;
+	height = 11 - distance;
 
-	current_reading = height * 10 * 7;
+	current_reading = height * 5 * 7;
 }
 
 void PID () {
@@ -390,12 +405,12 @@ if( dt >= time_sample) {
 
 	float error = current_reading - setpoint;
 
-	if (error > -15.0 && error < 15.0)
+	if (error > -10.0 && error < 10.0)
 	{
 	             error = 0;
 	}
 
-	if(error = 0) integral = 0;
+	if(error == 0) integral = 0;
 
 	else integral+= (ki * error);
 
